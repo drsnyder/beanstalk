@@ -18,7 +18,7 @@
 ;  ([port] (java.net.Socket. "localhost" port))
 ;  ([host port] (java.net.Socket. host port)))
 
-(defn create [host port]
+(defn- beanstalk-create [host port]
   (let [s (java.net.Socket. "localhost" port)]
     (struct-map Beanstalk
                 :socket s
@@ -26,40 +26,30 @@
                 :writer (writer s)
                 )))
 
+(defn- beanstalk-cmd [s & args]
+    (if (nil? args)
+      (str s \return \newline)
+      (str s " " (.concat (str (reduce #(str %1 " " %2) args)) 
+                          (str \return \newline)))))
+
 (defn beanstalk
-  ([port] (create "localhost" port))
-  ([host port] (create host port))
-  ([] (create "localhost" 11300)))
+  ([port] (beanstalk-create "localhost" port))
+  ([host port] (beanstalk-create host port))
+  ([] (beanstalk-create "localhost" 11300)))
 
 (defn beanstalk-close [b]
   (.close (bsock b)))
 
 (defn beanstalk-write [b msg]
   (let [w (bwriter b)]
-    (do 
-      (. w write msg) 
-      (. w flush))) b)
-
-
-(defn beanstalk-read [b]
-  (let [r (breader b) 
-        sb (StringBuilder.)]
-    (loop [c (.read r)]
-      (cond 
-        (neg? c) (str sb)
-        (and (= \newline (char c)) 
-             (> (.length sb) 1) 
-             (= (char (.charAt sb (- (.length sb) 1) )) \return))
-              (str (.substring sb 0 (- (.length sb) 1)))
-        true (do (.append sb (char c))
-               (recur (.read r)))))))
+    (do (. w write (beanstalk-cmd msg)) (. w flush))) b)
 
 (defn beanstalk-read [b]
   (binding [*in* (breader b)]
     (read-line)))
 
 
-(def b (beanstalk 11300))
-(beanstalk-write b "stats\r\n") 
-(beanstalk-read b) 
+;(def b (beanstalk 11300))
+;(beanstalk-write b "stats") 
+;(beanstalk-read b) 
 

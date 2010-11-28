@@ -8,10 +8,10 @@
 
 (deftest test-beanstalk-write
   (let [b (beanstalk)]
-    (is (not (nil? (beanstalk-write b "stats\r\n"))))))
+    (is (not (nil? (beanstalk-write b "stats"))))))
 
 (deftest test-beanstalk-read
    (is (= "OK" (re-find #"^OK" 
                         (beanstalk-read 
                           (beanstalk-write 
-                            (beanstalk) "stats\r\n"))))))
+                            (beanstalk) "stats"))))))
