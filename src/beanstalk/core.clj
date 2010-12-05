@@ -5,32 +5,13 @@
   (import [java.io BufferedReader]))
 
 ;
-  (use clojure.contrib.condition)
+  (use 'clojure.contrib.condition)
+  (use 'clojure.string)
   (use 'clojure.java.io)
   (import '[java.io BufferedReader])
 
 (def *debug* false)
 (def *crlf* (str \return \newline))
-
-(defprotocol BeanstalkObject
-  (close [this] "Close the connection")
-  (stats [this] "stats command")
-  (write [this msg] "Write to the socket using the writer")
-  (read [this] "Read from the socket using the reader")
-  ;(put [this pri del ttr length data] "put command")
-  ;(use [this tube] "use command")
-  ;(reserve [this] "reserve command")
-             )
-
-(defrecord Beanstalk [socket reader writer]
-  BeanstalkObject
-    (close [this] (.close socket))
-    (write [this msg] (stream-write writer (beanstalk-cmd msg)))
-    (read [this] (stream-read reader))
-    (stats [this] (do 
-                    (.write this (beanstalk-cmd :stats))
-                    (.read this)    ; ok
-                    (.read this)))) ; payload
 
 
 
@@ -41,12 +22,17 @@
 ;(cmd-reply-case writer cmd
 ;  (symbol fn))
 
+(defn beanstalk-bebug [msg]
+  (when *debug* (println msg)))
+
 ; translates to
 (defmacro cmd-reply-case [req clauses]
-  `(let [reply# ~req]
+  `(let [reply# (parse-reply ~req)]
+    (beanstalk-debug (str "<== " reply#))
      (condp = (:response reply#)
        ~@clauses
-       (raise :message (str "Unexpected response from sever: " response)))))
+       (clojure.contrib.condition/raise 
+          :message (str "Unexpected response from sever: " (:response reply#)))))))
 
 (macroexpand `(cmd-reply-case (stream-write writer (beanstalk-cmd :stats))
   (:ok (stream-read reader))))
@@ -57,9 +43,6 @@
 ;    (raise :message (str "Unexpected response from sever: " response)))
 ;  )
 
-(defn Beanstalk-create [host port]
-  (let [s (java.net.Socket. "localhost" port)]
-    (Beanstalk. s (reader s) (writer s))))
 
 
 (defn beanstalk-cmd [s & args]
@@ -70,7 +53,7 @@
 
 ; type conversion might be (Ingeger. var)
 (defn parse-reply [reply]
-  (let [parts (split reply #"\s+")
+  (let [parts (clojure.string/split reply #"\s+")
         response (keyword (clojure.string/lower-case (first parts)))
         data (reduce #(str %1 " " %2) (rest parts))]
     {:response response :data data}))
@@ -86,8 +69,40 @@
     (do (. w write msg) (. w flush)))
 
 (defn stream-read [r]
-  (binding [*in* r]
-    (read-line)))
+  (let [sb (StringBuilder.)]
+    (loop [c (.read r)]
+      (cond 
+        (neg? c) (str sb)
+        (and (= \newline (char c)) 
+             (> (.length sb) 1) 
+             (= (char (.charAt sb (- (.length sb) 1) )) \return))
+              (str (.substring sb 0 (- (.length sb) 1)))
+        true (do (.append sb (char c))
+               (recur (.read r)))))))
+
+
+(defprotocol BeanstalkObject
+  (close [this] "Close the connection")
+  (stats [this] "stats command")
+  ;(put [this pri del ttr length data] "put command")
+  ;(use [this tube] "use command")
+  ;(reserve [this] "reserve command")
+             )
+
+(defrecord Beanstalk [socket reader writer]
+  BeanstalkObject
+    (close [this] (.close socket))
+    (stats [this] (do (stream-write writer (beanstalk-cmd :stats)) 
+                      (cmd-reply-case (stream-read reader) 
+                                      (:ok (stream-read reader))))))
+    ;(stats [this] (do 
+    ;                (stream-write writer (beanstalk-cmd :stats))
+    ;                (stream-read reader)    ; ok
+    ;                (stream-read reader)))) ; payload
+
+(defn Beanstalk-create [host port]
+  (let [s (java.net.Socket. "localhost" port)]
+    (Beanstalk. s (reader s) (writer s))))
 
 
 (def B (Beanstalk-create "localhost" 11300))
