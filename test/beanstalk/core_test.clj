@@ -2,16 +2,14 @@
   (:use beanstalk.core clojure.test))
 
 (deftest test-beanstalk
-  (let [b (beanstalk)]
-    (is (and (not (nil? b)) 
-             (instance? clojure.lang.PersistentStructMap b)))))
+         (let [b (Beanstalk-create)]
+           (is (and (not (nil? b)) 
+                    (instance? beanstalk.core.Beanstalk b)))))
 
-(deftest test-beanstalk-write
-  (let [b (beanstalk)]
-    (is (not (nil? (beanstalk-write b "stats"))))))
+(deftest test-stats
+  (binding [ beanstalk.core/*debug* true ]
+         (let [b (Beanstalk-create)
+               result (.stats b)]
+           (is (not (nil? result)))
+           (is (> (.length result) 0)))))
 
-(deftest test-beanstalk-read
-   (is (= "OK" (re-find #"^OK" 
-                        (beanstalk-read 
-                          (beanstalk-write 
-                            (beanstalk) "stats"))))))

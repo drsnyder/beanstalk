@@ -1,48 +1,31 @@
 (ns beanstalk.core
 
-  (use clojure.contrib.condition)
+  (require clojure.contrib.condition)
+  (require clojure.string)
   (use clojure.java.io)
   (import [java.io BufferedReader]))
 
-;
-  (use 'clojure.contrib.condition)
-  (use 'clojure.string)
-  (use 'clojure.java.io)
-  (import '[java.io BufferedReader])
+
+;(use 'clojure.contrib.condition)
+;(use 'clojure.string)
+;(use 'clojure.java.io)
+;(import '[java.io BufferedReader])
 
 (def *debug* false)
 (def *crlf* (str \return \newline))
 
 
-
-;(cmd-reply-case (stream-write writer (beanstalk-cmd "stats"))
-;  (:ok (stream-read reader)))
-
-; cmd = "stats", symbol = :ok, fn = (stream-read reader)
-;(cmd-reply-case writer cmd
-;  (symbol fn))
-
-(defn beanstalk-bebug [msg]
+(defn beanstalk-debug [msg]
   (when *debug* (println msg)))
 
 ; translates to
 (defmacro cmd-reply-case [req clauses]
   `(let [reply# (parse-reply ~req)]
-    (beanstalk-debug (str "<== " reply#))
+    (beanstalk-debug (str "* <= " reply#))
      (condp = (:response reply#)
        ~@clauses
        (clojure.contrib.condition/raise 
-          :message (str "Unexpected response from sever: " (:response reply#)))))))
-
-(macroexpand `(cmd-reply-case (stream-write writer (beanstalk-cmd :stats))
-  (:ok (stream-read reader))))
-
-;(let [reply (stream-write writer (beanstalk-cmd (name cmd)))]
-;  (cond = (:response reply)
-;    :ok fn
-;    (raise :message (str "Unexpected response from sever: " response)))
-;  )
-
+          :message (str "Unexpected response from sever: " (:response reply#))))))
 
 
 (defn beanstalk-cmd [s & args]
@@ -58,11 +41,6 @@
         data (reduce #(str %1 " " %2) (rest parts))]
     {:response response :data data}))
 
-; keep
-(defn Beanstalk
-  ([port] (Beanstalk-create "localhost" port))
-  ([host port] (Beanstalk-create host port))
-  ([] (Beanstalk-create "localhost" 11300)))
 
 
 (defn stream-write [w msg]
@@ -95,15 +73,15 @@
     (stats [this] (do (stream-write writer (beanstalk-cmd :stats)) 
                       (cmd-reply-case (stream-read reader) 
                                       (:ok (stream-read reader))))))
-    ;(stats [this] (do 
-    ;                (stream-write writer (beanstalk-cmd :stats))
-    ;                (stream-read reader)    ; ok
-    ;                (stream-read reader)))) ; payload
 
-(defn Beanstalk-create [host port]
-  (let [s (java.net.Socket. "localhost" port)]
-    (Beanstalk. s (reader s) (writer s))))
+(defn Beanstalk-create 
+  ([] (let [s (java.net.Socket. "localhost" 11300)]
+                (Beanstalk. s (reader s) (writer s))))  
+  ([port] (let [s (java.net.Socket. "localhost" port)]
+                (Beanstalk. s (reader s) (writer s))))
+  ([host port] (let [s (java.net.Socket. host port)]
+                (Beanstalk. s (reader s) (writer s)))))
 
 
-(def B (Beanstalk-create "localhost" 11300))
-(.stats B)
+;(def B (Beanstalk))
+;(.stats B)
