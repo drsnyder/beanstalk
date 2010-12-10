@@ -41,7 +41,8 @@
 
 (defn stream-write [w msg]
   (beanstalk-debug (str "* => " msg))
-  (do (. w write msg) (. w flush)))
+  (let [ret (. w write msg)]
+    (. w flush) ret))
 
 (defn stream-read [r]
   (let [sb (StringBuilder.)]
@@ -55,49 +56,58 @@
         true (do (.append sb (char c))
                (recur (.read r)))))))
 
-(defmacro cmd-reply-case [req clauses]
-  `(let [reply# (parse-reply ~req)]
-    (beanstalk-debug (str "* <= " reply#))
-     (or 
-       (condp = (:response reply#)
-         ~@clauses
-         (clojure.contrib.condition/raise 
-           :message (str "Unexpected response from sever: " (:response reply#)))) 
-       (:data reply#))))
+(defmacro cmd-reply-case
+  ([response clauses]
+   `(let [reply# (parse-reply ~response)]
+      (beanstalk-debug (str "* <= " reply#))
+      (or 
+        (condp = (:response reply#)
+          ~@clauses
+          (clojure.contrib.condition/raise 
+            :message (str "Unexpected response from sever: " (:response reply#)))) 
+        (:data reply#))))
+  ([request response clauses] `(do ~request (cmd-reply-case ~response ~clauses)))
+  ([request data response clauses] `(do ~request ~data (cmd-reply-case ~response ~clauses))))
+
 
 (defprotocol BeanstalkObject
   (close [this] "Close the connection")
+  (read [this]  "Read from beanstalk")
+  (write [this msg] "Write msg to beanstalk")
   (stats [this] "stats command")
   (put [this pri del ttr length data] "put command")
   (use [this tube] "use command")
-  ;(reserve [this] "reserve command")
-             )
+  (reserve [this] "reserve command"))
 
 (defrecord Beanstalk [socket reader writer]
            BeanstalkObject
            (close [this] (.close socket))
-           (stats [this] (do 
-                           (stream-write writer (beanstalk-cmd :stats)) 
-                           (cmd-reply-case (stream-read reader) 
-                                           (:ok (stream-read reader)))))
+           (read [this] (stream-read reader))
+           (write [this msg] (stream-write writer msg))
+           (stats [this] (cmd-reply-case 
+                           (.write this (beanstalk-cmd :stats))
+                           (.read this)
+                           (:ok (.read this))))
            (put [this pri del ttr length data] 
-                (do 
-                  (stream-write writer (beanstalk-cmd :put pri del ttr length))
-                  (stream-write writer (beanstalk-data data))
-                  (cmd-reply-case (stream-read reader) 
-                                               (:inserted false))))
-           (use [this tube] (do 
-                              (stream-write writer (beanstalk-cmd :use tube)) 
-                              (cmd-reply-case (stream-read reader) 
-                                              (:using false)))))
+                (Integer. (cmd-reply-case 
+                  (.write this (beanstalk-cmd :put pri del ttr length))
+                  (.write this (beanstalk-data data))
+                  (.read this) 
+                  (:inserted false))))
+           (use [this tube] (cmd-reply-case 
+                              (.write this (beanstalk-cmd :use tube)) 
+                              (.read this) 
+                              (:using false)))
+           (reserve [this] (cmd-reply-case 
+                              (.write this (beanstalk-cmd :reserve)) 
+                              (.read this) 
+                              (:reserved false))))
 
-(defn Beanstalk-create 
-  ([] (let [s (java.net.Socket. "localhost" 11300)]
-                (Beanstalk. s (reader s) (writer s))))  
-  ([port] (let [s (java.net.Socket. "localhost" port)]
-                (Beanstalk. s (reader s) (writer s))))
+(defn new-beanstalk
   ([host port] (let [s (java.net.Socket. host port)]
-                (Beanstalk. s (reader s) (writer s)))))
+                 (Beanstalk. s (reader s) (writer s))))
+  ([port]      (new-beanstalk "localhost" port))
+  ([]          (new-beanstalk "localhost" 11300)))
 
 
 ;(def B (Beanstalk))
