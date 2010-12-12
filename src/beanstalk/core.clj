@@ -70,6 +70,27 @@
   ([request data response clauses] `(do ~request ~data (cmd-reply-case ~response ~clauses))))
 
 
+; handler => (fn [beanstalk reply] {:payload (.read beanstalk)})
+; handler => (fn [beanstalk reply] {:payload (.read beanstalk) :id (Integer.  (:data reply))})
+(defn protocol-response [beanstalk reply expected handler]
+       (condp = (:response reply)
+         expected (handler beanstalk reply)
+         (clojure.contrib.condition/raise 
+           :message (str "Unexpected response from sever: " (:response reply)))))
+
+(defn protocol-case 
+  ([beanstalk expected handle-response]
+   (let [reply (parse-reply (.read beanstalk))]
+     (beanstalk-debug (str "* <= " reply))
+     (protocol-response beanstalk reply expected handle-response)))
+  ([beanstalk cmd-str data expected handle-response]
+   (do (.write beanstalk cmd-str)
+     (.write beanstalk data)
+     (protocol-case beanstalk expected handle-response)))
+  ([beanstalk cmd-str expected handle-response]
+   (do (.write beanstalk cmd-str)
+     (protocol-case beanstalk expected handle-response))))
+
 (defprotocol BeanstalkObject
   (close [this] "Close the connection")
   (read [this]  "Read from beanstalk")
@@ -84,24 +105,38 @@
            (close [this] (.close socket))
            (read [this] (stream-read reader))
            (write [this msg] (stream-write writer msg))
-           (stats [this] (cmd-reply-case 
-                           (.write this (beanstalk-cmd :stats))
-                           (.read this)
-                           (:ok (.read this))))
+           (stats [this] 
+                  (protocol-case 
+                    this 
+                    (beanstalk-cmd :stats) 
+                    :ok 
+                    (fn [b r] {:payload (.read b)})))
            (put [this pri del ttr length data] 
-                (Integer. (cmd-reply-case 
-                  (.write this (beanstalk-cmd :put pri del ttr length))
-                  (.write this (beanstalk-data data))
-                  (.read this) 
-                  (:inserted false))))
-           (use [this tube] (cmd-reply-case 
-                              (.write this (beanstalk-cmd :use tube)) 
-                              (.read this) 
-                              (:using false)))
-           (reserve [this] (cmd-reply-case 
-                              (.write this (beanstalk-cmd :reserve)) 
-                              (.read this) 
-                              (:reserved false))))
+                (protocol-case 
+                  this 
+                  (beanstalk-cmd :put pri del ttr length)
+                  (beanstalk-data data)
+                  :inserted
+                  (fn [b r] {:id (Integer. (:data r))})))
+           (use [this tube] 
+                (protocol-case 
+                  this
+                  (beanstalk-cmd :use tube)
+                  :using
+                  (fn [b r] (let [tube (:data r)] {:payload tube :tube tube}))))
+           (reserve [this] 
+                (protocol-case 
+                  this
+                  (beanstalk-cmd :reserve)
+                  :reserved
+                  (fn [b r] {:payload (.read b) 
+                             ; response is "<id> <length>"
+                             :id (Integer. (first (clojure.string/split (:data r) #"\s+")) )}))))
+                    
+                    ;(cmd-reply-case 
+                    ;          (.write this (beanstalk-cmd :reserve)) 
+                    ;          (.read this) 
+                    ;          (:reserved false))))
 
 (defn new-beanstalk
   ([host port] (let [s (java.net.Socket. host port)]
