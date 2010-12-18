@@ -1,6 +1,8 @@
 (ns beanstalk.core-test
   (:use beanstalk.core clojure.test))
 
+; tracing: sudo tcpdump -i lo0 -tnNqA tcp port 11300 
+
 (deftest test-beanstalk
          (let [b (new-beanstalk)]
            (is (and (not (nil? b)) 
@@ -13,6 +15,7 @@
              (is (not (nil? (:payload result))))
              (is (> (.length (:payload result)) 0)))))
 
+
 (deftest test-put
          (binding [ beanstalk.core/*debug* true ]
            (let [b (new-beanstalk)
@@ -21,7 +24,9 @@
              (is (not (nil? result)))
              (println (str "put returned id " (:id result)))
              ; should be the job id
-             (is (> (:id result) 0)))))
+             (is (> (:id result) 0))
+             (.delete b (:id result)))))
+
 
 (deftest test-use
          (binding [ beanstalk.core/*debug* true ]
@@ -31,14 +36,79 @@
              (is (not (nil? result)))
              (is (= (:payload result) "test-tube")))))
 
+
 (deftest test-reserve
          (binding [ beanstalk.core/*debug* true ]
-           (let [b (new-beanstalk)
-                 use-r (.use b "test-tube")
-                 put-r (.put b 0 0 10 5 "hello")
-                 reserve-r (.reserve b)]
-             (println (str "result use => " use-r))
-             (println (str "result put => " put-r))
-             (println (str "result reserve => " reserve-r))
-             (is (not (nil? reserve-r)))
-             (is (= (:payload reserve-r) "hello")))))
+           (let [p (new-beanstalk) ; producer
+                 c (new-beanstalk) ; consumer
+                 use-p (.use p "test-tube")
+                 put-p (.put p 0 0 10 5 "hello")
+                 watch-c (.watch c "test-tube")
+                 reserve-c (.reserve c)]
+             (println (str "result use => " use-p))
+             (println (str "result put => " put-p))
+             (println (str "result reserve => " reserve-c))
+             (is (> (:count watch-c) 0))
+             (is (not (nil? reserve-c)))
+             (is (> (:id reserve-c) 0))
+             (is (= (:payload reserve-c) "hello"))
+             (is (= true (.delete c (:id put-p)))))))
+
+
+;; make these tests more stable-- use a random tube?
+(deftest test-reserve-with-timeout
+         (binding [ beanstalk.core/*debug* true ]
+           (let [data "hello-reserve-with-timeout"
+                 p (new-beanstalk)
+                 c (new-beanstalk)
+                 use-p (.use p "test-tube-r")
+                 put-p (.put p 0 0 10 (.length data) data)
+                 watch-c (.watch c "test-tube-r")
+                 reserve-c (.reserve-with-timeout c 10)]
+             (println (str "test-reserve-with-timeout: result use => " use-p))
+             (println (str "test-reserve-with-timeout: result put => " put-p))
+             (println (str "test-reserve-with-timeout: result reserve => " reserve-c))
+             (is (not (nil? reserve-c)))
+             (is (> (:id reserve-c) 0))
+             (is (= (:payload reserve-c) "hello-reserve-with-timeout"))
+             (is (= true (.delete c (:id put-p)))))))
+
+
+(deftest test-release
+         (binding [ beanstalk.core/*debug* true ]
+           (let [p (new-beanstalk) ; producer
+                 c (new-beanstalk) ; consumer
+                 use-p (.use p "test-tube")
+                 put-p (.put p 0 0 10 5 "hello")
+                 watch-c (.watch c "test-tube")
+                 reserve-c (.reserve c)
+                 release-c (.release c (:id reserve-c) 0 0)]
+             (println (str "release: result use => " use-p))
+             (println (str "release: result put => " put-p))
+             (println (str "release: result reserve => " reserve-c))
+             (is (not (nil? reserve-c)))
+             (is (= true release-c))
+             (is (> (:id reserve-c) 0))
+             (is (= (:payload reserve-c) "hello"))
+             (is (= true (.delete c (:id put-p)))))))
+
+(deftest test-bury
+         (binding [ beanstalk.core/*debug* true ]
+           (let [p (new-beanstalk) ; producer
+                 c (new-beanstalk) ; consumer
+                 use-p (.use p "test-tube")
+                 put-p (.put p 0 0 10 5 "hello")
+                 watch-c (.watch c "test-tube")
+                 reserve-c (.reserve c)
+                 bury-c (.bury c (:id reserve-c) 1000)]
+             (println (str "bury: result use => " use-p))
+             (println (str "bury: result put => " put-p))
+             (println (str "bury: result reserve => " reserve-c))
+             (is (not (nil? reserve-c)))
+             (is (= true bury-c))
+             (is (> (:id reserve-c) 0))
+             (is (= true (.delete c (:id put-p)))))))
+
+
+; test mismatch between length specified in put and the length of the data.
+; should catch EXPECTED_CRLF
