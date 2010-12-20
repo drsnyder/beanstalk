@@ -109,6 +109,48 @@
              (is (> (:id reserve-c) 0))
              (is (= true (.delete c (:id put-p)))))))
 
+(deftest test-touch
+         (binding [ beanstalk.core/*debug* true ]
+           (let [p (new-beanstalk) ; producer
+                 c (new-beanstalk) ; consumer
+                 use-p (.use p "test-tube")
+                 put-p (.put p 0 0 10 5 "hello")
+                 watch-c (.watch c "test-tube")
+                 reserve-c (.reserve c)
+                 touch-c (.touch c (:id reserve-c))]
+             (println (str "touch: result use => " use-p))
+             (println (str "touch: result put => " put-p))
+             (println (str "touch: result reserve => " reserve-c))
+             (is (not (nil? reserve-c)))
+             (is (= true touch-c))
+             (is (> (:id reserve-c) 0))
+             (is (= true (.delete c (:id put-p)))))))
+
+(deftest test-ignore
+         (binding [ beanstalk.core/*debug* true ]
+           (let [c (new-beanstalk) 
+                 watch-c (.watch c "test-tube")
+                 ignore-c (.ignore c "default")]
+             (println (str "ignore: result ignore => " ignore-c))
+             (is (> (:count ignore-c) 0)))))
+
+(deftest test-peek
+         (binding [ beanstalk.core/*debug* true ]
+           (let [p (new-beanstalk) ; producer
+                 c (new-beanstalk) ; consumer
+                 data (str "hello " (rand-int 100))
+                 use-p (.use p "test-tube-p")
+                 put-p (.put p 0 0 10 (.length data) data)
+                 watch-c (.watch c "test-tube-p")
+                 reserve-c (.reserve c)
+                 peek-c (.peek c (:id reserve-c))]
+             (println (str "peek: result reserve => " reserve-c))
+             (println (str "peek: result peek => " peek-c))
+             (is (not (nil? reserve-c)))
+             (is (not (nil? peek-c)))
+             (is (= (:payload reserve-c) data))
+             (is (= (:payload reserve-c) (:payload peek-c)))
+             (is (= true (.delete c (:id peek-c)))))))
 
 ; test mismatch between length specified in put and the length of the data.
 ; should catch EXPECTED_CRLF

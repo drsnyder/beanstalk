@@ -20,15 +20,16 @@
   (when *debug* (clojure.pprint/pprint msg)))
 
 
-
 (defn beanstalk-cmd [s & args]
     (if (nil? args)
       (str (name s) \return \newline)
       (str (name s) " " (.concat (str (reduce #(str %1 " " %2) args)) 
                           (str \return \newline)))))
 
+
 (defn beanstalk-data [data]
   (str data \return \newline))
+
 
 ; type conversion might be (Integer. var)
 (defn parse-reply [reply]
@@ -44,6 +45,7 @@
   (beanstalk-debug (str "* => " msg))
   (let [ret (. w write msg)]
     (. w flush) ret))
+
 
 (defn stream-read [r]
   (let [sb (StringBuilder.)]
@@ -63,9 +65,16 @@
 (defn protocol-response [beanstalk reply expected handler]
        (condp = (:response reply)
          expected (handler beanstalk reply)
+         ; under what conditions do we retry?
          :expected_crlf (clojure.contrib.condition/raise 
+                          :type :expected_crlf
                           :message (str "Protocol error. No CRLF."))
+         :not_found (clojure.contrib.condition/raise 
+                      :type :not_found
+                      :message (str "Job not found."))
+         :not_ignored false
          (clojure.contrib.condition/raise 
+           :type :protocol
            :message (str "Unexpected response from sever: " (:response reply)))))
 
 
@@ -96,6 +105,12 @@
   (delete [this id] "delete command")
   (release [this id pri del] "release command")
   (bury [this id pri] "bury command")
+  (touch [this id] "touch command")
+  (ignore [this tube] "ignore command")
+  (peek [this id] "peek command")
+  (peek-ready [this] "peek-ready command")
+  (peek-delayed [this] "peek-delayed command")
+  (peek-buried [this] "peek-buried command")
              )
 
 
@@ -163,6 +178,50 @@
                   (beanstalk-cmd :bury id pri)
                   :buried
                   (fn [b r] true)))
+           (touch [this id] 
+                (protocol-case 
+                  this
+                  (beanstalk-cmd :touch id)
+                  :touched
+                  (fn [b r] true)))
+           (ignore [this tube] 
+                (protocol-case 
+                  this
+                  (beanstalk-cmd :ignore tube)
+                  :watching
+                  (fn [b r] {:count (Integer. (:data r))}))) 
+           (peek [this id] 
+                (protocol-case 
+                  this
+                  (beanstalk-cmd :peek id)
+                  :found
+                  (fn [b r] {:payload (.read b) 
+                             ; response is "<id> <length>"
+                             :id (Integer. (first (clojure.string/split (:data r) #"\s+")) )})))
+           (peek-ready [this] 
+                (protocol-case 
+                  this
+                  (beanstalk-cmd :peek-ready)
+                  :found
+                  (fn [b r] {:payload (.read b) 
+                             ; response is "<id> <length>"
+                             :id (Integer. (first (clojure.string/split (:data r) #"\s+")) )})))
+           (peek-delayed [this] 
+                (protocol-case 
+                  this
+                  (beanstalk-cmd :peek-delayed)
+                  :found
+                  (fn [b r] {:payload (.read b) 
+                             ; response is "<id> <length>"
+                             :id (Integer. (first (clojure.string/split (:data r) #"\s+")) )})))
+           (peek-buried [this] 
+                (protocol-case 
+                  this
+                  (beanstalk-cmd :peek-buried)
+                  :found
+                  (fn [b r] {:payload (.read b) 
+                             ; response is "<id> <length>"
+                             :id (Integer. (first (clojure.string/split (:data r) #"\s+")) )})))
            )
 
            
@@ -174,6 +233,3 @@
   ([port]      (new-beanstalk "localhost" port))
   ([]          (new-beanstalk "localhost" 11300)))
 
-
-;(def B (Beanstalk))
-;(.stats B)
