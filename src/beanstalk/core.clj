@@ -1,9 +1,9 @@
 (ns beanstalk.core
 
-  (require clojure.contrib.condition)
-  (require clojure.string)
-  (require clojure.pprint)
-  (use clojure.java.io)
+  (:use [clojure.contrib.condition :only [raise]]
+        [clojure.string :only [split lower-case]]
+        [clojure.pprint :only [pprint]]
+        [clojure.java.io])
   (import [java.io BufferedReader]))
 
 
@@ -17,7 +17,7 @@
 
 
 (defn beanstalk-debug [msg]
-  (when *debug* (clojure.pprint/pprint msg)))
+  (when *debug* (pprint msg)))
 
 
 (defn beanstalk-cmd [s & args]
@@ -33,8 +33,8 @@
 ; type conversion might be (Integer. var)
 (defn parse-reply [reply]
   (beanstalk-debug (str "parse-reply: " reply))
-  (let [parts (clojure.string/split reply #"\s+")
-        response (keyword (clojure.string/lower-case (first parts)))]
+  (let [parts (split reply #"\s+")
+        response (keyword (lower-case (first parts)))]
     (if (empty? (rest parts))
       {:response response :data nil}
       {:response response :data (reduce #(str %1 " " %2) (rest parts))})))
@@ -66,14 +66,14 @@
        (condp = (:response reply)
          expected (handler beanstalk reply)
          ; under what conditions do we retry?
-         :expected_crlf (clojure.contrib.condition/raise 
+         :expected_crlf (raise 
                           :type :expected_crlf
                           :message (str "Protocol error. No CRLF."))
-         :not_found (clojure.contrib.condition/raise 
+         :not_found (raise 
                       :type :not_found
                       :message (str "Job not found."))
          :not_ignored false
-         (clojure.contrib.condition/raise 
+         (raise 
            :type :protocol
            :message (str "Unexpected response from sever: " (:response reply)))))
 
@@ -151,7 +151,7 @@
                   :reserved
                   (fn [b r] {:payload (.read b) 
                              ; response is "<id> <length>"
-                             :id (Integer. (first (clojure.string/split (:data r) #"\s+")) )})))
+                             :id (Integer. (first (split (:data r) #"\s+")) )})))
            (reserve-with-timeout [this timeout] 
                 (protocol-case 
                   this
@@ -159,7 +159,7 @@
                   :reserved
                   (fn [b r] {:payload (.read b) 
                              ; response is "<id> <length>"
-                             :id (Integer. (first (clojure.string/split (:data r) #"\s+")) )})))
+                             :id (Integer. (first (split (:data r) #"\s+")) )})))
            (delete [this id] 
                 (protocol-case 
                   this
@@ -197,7 +197,7 @@
                   :found
                   (fn [b r] {:payload (.read b) 
                              ; response is "<id> <length>"
-                             :id (Integer. (first (clojure.string/split (:data r) #"\s+")) )})))
+                             :id (Integer. (first (split (:data r) #"\s+")) )})))
            (peek-ready [this] 
                 (protocol-case 
                   this
@@ -205,7 +205,7 @@
                   :found
                   (fn [b r] {:payload (.read b) 
                              ; response is "<id> <length>"
-                             :id (Integer. (first (clojure.string/split (:data r) #"\s+")) )})))
+                             :id (Integer. (first (split (:data r) #"\s+")) )})))
            (peek-delayed [this] 
                 (protocol-case 
                   this
@@ -213,7 +213,7 @@
                   :found
                   (fn [b r] {:payload (.read b) 
                              ; response is "<id> <length>"
-                             :id (Integer. (first (clojure.string/split (:data r) #"\s+")) )})))
+                             :id (Integer. (first (split (:data r) #"\s+")) )})))
            (peek-buried [this] 
                 (protocol-case 
                   this
@@ -221,7 +221,7 @@
                   :found
                   (fn [b r] {:payload (.read b) 
                              ; response is "<id> <length>"
-                             :id (Integer. (first (clojure.string/split (:data r) #"\s+")) )})))
+                             :id (Integer. (first (split (:data r) #"\s+")) )})))
            )
 
            
