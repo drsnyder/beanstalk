@@ -22,13 +22,12 @@
 
 (defn beanstalk-cmd [s & args]
     (if (nil? args)
-      (str (name s) \return \newline)
-      (str (name s) " " (.concat (str (reduce #(str %1 " " %2) args)) 
-                          (str \return \newline)))))
+      (name s) 
+      (str (name s) " " (str (reduce #(str %1 " " %2) args)))))
 
 
 (defn beanstalk-data [data]
-  (str data \return \newline))
+  (str data))
 
 
 ; type conversion might be (Integer. var)
@@ -43,8 +42,9 @@
 
 (defn stream-write [w msg]
   (beanstalk-debug (str "* => " msg))
-  (let [ret (. w write msg)]
-    (. w flush) ret))
+  (do (. w write msg) 
+    (. w write *crlf*)
+    (. w flush)))
 
 
 (defn stream-read [r]

@@ -7,6 +7,9 @@
 ; ./src:./classes:./lib:beanstalk-1.0.0-SNAPSHOT.jar
 ; (compile 'beanstalk.examples.producer)
 ; java -cp ./classes/:./lib/clojure-1.2.0.jar:./lib/clojure-contrib-1.2.0.jar beanstalk.examples.producer
+;
+; simpler:
+; lein run -m beanstalk.examples.producer
 
 (defn -main [& args]
   (with-command-line args
