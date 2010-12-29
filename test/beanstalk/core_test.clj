@@ -1,4 +1,5 @@
 (ns beanstalk.core-test
+  (:refer-clojure :exclude [read peek use])
   (:use beanstalk.core clojure.test))
 
 ; tracing: sudo tcpdump -i lo0 -tnNqA tcp port 11300 

@@ -1,5 +1,5 @@
 (ns beanstalk.core
-
+  (:refer-clojure :exclude [read peek use])
   (:use [clojure.contrib.condition :only [raise]]
         [clojure.string :only [split lower-case]]
         [clojure.pprint :only [pprint]]
@@ -42,9 +42,9 @@
 
 (defn stream-write [w msg]
   (beanstalk-debug (str "* => " msg))
-  (do (. w write msg) 
-    (. w write *crlf*)
-    (. w flush)))
+  (doto w (.write msg) 
+    (.write *crlf*)
+    (.flush)))
 
 
 (defn stream-read [r]
@@ -114,7 +114,7 @@
              )
 
 
-(defrecord Beanstalk [socket reader writer]
+(deftype Beanstalk [socket reader writer]
            BeanstalkObject
            (close [this] (.close socket))
            (read [this] (stream-read reader))
