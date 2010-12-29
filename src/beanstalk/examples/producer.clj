@@ -1,5 +1,6 @@
 (ns beanstalk.examples.producer
   (:gen-class)
+  (:refer-clojure :exclude [read peek use])
   (:use clojure.contrib.command-line)
   (:use beanstalk.core))
 
