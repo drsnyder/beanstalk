@@ -25,12 +25,12 @@ For example:
 Two examples are provided:
 
     ; start consumer
-    lein run -m beanstalk.examples.consumer
+    lein run -m com.github.drsnyder.beanstalk.examples.consumer 
 
     ; send some data
-    lein run -m beanstalk.examples.producer -m "hello" -n 5
+    lein run -m com.github.drsnyder.beanstalk.examples.producer -m "hello" -n 5 
     ; send shutdown
-    lein run -m beanstalk.examples.producer -m "exit" 
+    lein run -m com.github.drsnyder.beanstalk.examples.producer -m "exit"
 
 ## License
 

@@ -1,4 +1,4 @@
-(ns beanstalk.core
+(ns com.github.drsnyder.beanstalk
   (:refer-clojure :exclude [read peek use])
   (:use [clojure.contrib.condition :only [raise]]
         [clojure.string :only [split lower-case]]

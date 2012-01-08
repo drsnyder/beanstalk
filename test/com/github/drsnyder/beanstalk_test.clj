@@ -1,16 +1,17 @@
-(ns beanstalk.core-test
+(ns com.github.drsnyder.beanstalk-test
   (:refer-clojure :exclude [read peek use])
-  (:use beanstalk.core clojure.test))
+  (:use [com.github.drsnyder.beanstalk :as beanstalk]
+        clojure.test))
 
 ; tracing: sudo tcpdump -i lo0 -tnNqA tcp port 11300 
 
 (deftest test-beanstalk
          (let [b (new-beanstalk)]
            (is (and (not (nil? b)) 
-                    (instance? beanstalk.core.Beanstalk b)))))
+                    (instance? com.github.drsnyder.beanstalk.Beanstalk b)))))
 
 (deftest test-stats
-         (binding [ beanstalk.core/*debug* true ]
+         (binding [ beanstalk/*debug* true ]
            (let [b (new-beanstalk)
                  result (.stats b)]
              (is (not (nil? (:payload result))))
@@ -18,7 +19,7 @@
 
 
 (deftest test-put
-         (binding [ beanstalk.core/*debug* true ]
+         (binding [ beanstalk/*debug* true ]
            (let [b (new-beanstalk)
                  result (.put b 0 0 10 5 "hello")]
              (println (str "result => " result))
@@ -30,7 +31,7 @@
 
 
 (deftest test-use
-         (binding [ beanstalk.core/*debug* true ]
+         (binding [ beanstalk/*debug* true ]
            (let [b (new-beanstalk)
                  result (.use b "test-tube")]
              (println (str "result => " result))
@@ -39,7 +40,7 @@
 
 
 (deftest test-reserve
-         (binding [ beanstalk.core/*debug* true ]
+         (binding [ beanstalk/*debug* true ]
            (let [p (new-beanstalk) ; producer
                  c (new-beanstalk) ; consumer
                  use-p (.use p "test-tube")
@@ -58,7 +59,7 @@
 
 ;; make these tests more stable-- use a random tube?
 (deftest test-reserve-with-timeout
-         (binding [ beanstalk.core/*debug* true ]
+         (binding [ beanstalk/*debug* true ]
            (let [data "hello-reserve-with-timeout"
                  p (new-beanstalk)
                  c (new-beanstalk)
@@ -76,7 +77,7 @@
 
 
 (deftest test-release
-         (binding [ beanstalk.core/*debug* true ]
+         (binding [ beanstalk/*debug* true ]
            (let [p (new-beanstalk) ; producer
                  c (new-beanstalk) ; consumer
                  use-p (.use p "test-tube")
@@ -94,7 +95,7 @@
              (is (= true (.delete c (:id put-p)))))))
 
 (deftest test-bury
-         (binding [ beanstalk.core/*debug* true ]
+         (binding [ beanstalk/*debug* true ]
            (let [p (new-beanstalk) ; producer
                  c (new-beanstalk) ; consumer
                  use-p (.use p "test-tube")
@@ -111,7 +112,7 @@
              (is (= true (.delete c (:id put-p)))))))
 
 (deftest test-touch
-         (binding [ beanstalk.core/*debug* true ]
+         (binding [ beanstalk/*debug* true ]
            (let [p (new-beanstalk) ; producer
                  c (new-beanstalk) ; consumer
                  use-p (.use p "test-tube")
@@ -128,7 +129,7 @@
              (is (= true (.delete c (:id put-p)))))))
 
 (deftest test-ignore
-         (binding [ beanstalk.core/*debug* true ]
+         (binding [ beanstalk/*debug* true ]
            (let [c (new-beanstalk) 
                  watch-c (.watch c "test-tube")
                  ignore-c (.ignore c "default")]
@@ -136,7 +137,7 @@
              (is (> (:count ignore-c) 0)))))
 
 (deftest test-peek
-         (binding [ beanstalk.core/*debug* true ]
+         (binding [ beanstalk/*debug* true ]
            (let [p (new-beanstalk) ; producer
                  c (new-beanstalk) ; consumer
                  data (str "hello " (rand-int 100))

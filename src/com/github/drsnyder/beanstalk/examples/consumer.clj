@@ -1,16 +1,16 @@
-(ns beanstalk.examples.consumer
+(ns com.github.drsnyder.beanstalk.examples.consumer
   (:gen-class)
   (:refer-clojure :exclude [read peek use])
   (:use clojure.contrib.command-line)
-  (:use beanstalk.core))
+  (:use com.github.drsnyder.beanstalk))
 
 ; .clojure
 ; ./src:./classes:./lib:beanstalk-1.0.0-SNAPSHOT.jar
-; (compile 'beanstalk.examples.consumer)
-; java -cp ./classes/:./lib/clojure-1.2.0.jar:./lib/clojure-contrib-1.2.0.jar beanstalk.examples.consumer
+; (compile 'com.github.drsnyder.beanstalk.examples.consumer)
+; java -cp ./classes/:./lib/clojure-1.2.0.jar:./lib/clojure-contrib-1.2.0.jar com.github.drsnyder.beanstalk.examples.consumer
 ;
 ; simpler:
-; lein run -m beanstalk.examples.consumer
+; lein run -m com.github.drsnyder.beanstalk.examples.consumer
 
 (defn -main [& args]
   (with-command-line args
