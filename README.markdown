@@ -10,6 +10,8 @@ The beanstalk client uses deftype and a protocol declaration to create a simple
 mappings to the [beanstalk protocol commands](https://github.com/kr/beanstalkd/blob/v1.3/doc/protocol.txt). 
 For example: 
 
+    (:use com.github.drsnyder.beanstalk)
+
     ; producer
     user=> (def b (new-beanstalk))
     user=> (.use b "my-tube")
