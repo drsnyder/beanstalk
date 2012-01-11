@@ -22,6 +22,9 @@ For example:
     user=> (.watch b "my-tube")
     user=> (def job (.reserve b)) ; id is (:id job), payload is (:payload job)
 
+This library is also available on [clojars](https://clojars.org/com.github.drsnyder/beanstalk). 
+To use, add [com.github.drsnyder/beanstalk "1.0.0-SNAPSHOT"] to your dependencies.
+
 ## Examples
 
 Two examples are provided:
