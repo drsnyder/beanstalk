@@ -3,6 +3,21 @@
 A native clojure [beanstalkd](http://kr.github.com/beanstalkd/) client library. 
 Some inspiration and ideas were taken from [cl-beanstalk](https://github.com/antifuchs/cl-beanstalk/).
 
+WARNING: Interface subject to change. This interface is not considered
+idiomatic clojure. A more "clojure" interface would probably look something
+like the following:
+
+    (beanstalk/with-server config-map
+        (use "my-tube")
+        (put 0 0 0 5 "hello"))
+
+    (beanstalk/with-server config-map
+        (watch "my-tube")
+        (let [job (reserve)]
+            (do-something-with-job)))
+
+See also [À la carte configuration in Clojure APIs](http://cemerick.com/2011/10/17/a-la-carte-configuration-in-clojure-apis/).
+
 ## Usage
 
 The beanstalk client uses deftype and a protocol declaration to create a simple 
