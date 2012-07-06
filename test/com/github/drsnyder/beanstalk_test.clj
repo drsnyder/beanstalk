@@ -3,6 +3,8 @@
   (:use [com.github.drsnyder.beanstalk :as beanstalk]
         clojure.test))
 
+(set! *warn-on-reflection* true)
+
 ; tracing: sudo tcpdump -i lo0 -tnNqA tcp port 11300 
 
 (deftest test-beanstalk

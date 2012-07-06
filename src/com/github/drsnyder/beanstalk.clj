@@ -7,13 +7,8 @@
   (import [java.io BufferedReader]))
 
 
-;(use 'clojure.contrib.condition)
-;(use 'clojure.string)
-;(use 'clojure.java.io)
-;(import '[java.io BufferedReader])
-
-(def *debug* false)
-(def *crlf* (str \return \newline))
+(def #^Boolean ^:dynamic *debug* false)
+(def #^String *crlf* (str \return \newline))
 
 
 (defn beanstalk-debug [msg]
@@ -221,8 +216,7 @@
                   :found
                   (fn [b r] {:payload (.read b) 
                              ; response is "<id> <length>"
-                             :id (Integer. (first (split (:data r) #"\s+")) )})))
-           )
+                             :id (Integer. (first (split (:data r) #"\s+")) )}))))
 
            
                     
