@@ -8,7 +8,6 @@
 
 
 (def #^Boolean ^:dynamic *debug* false)
-(def #^String *crlf* (str \return \newline))
 
 
 (defn beanstalk-debug [msg]
