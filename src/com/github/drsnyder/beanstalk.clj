@@ -1,9 +1,9 @@
 (ns com.github.drsnyder.beanstalk
   (:refer-clojure :exclude [read peek use])
-  (:use [clojure.contrib.condition :only [raise]]
-        [clojure.string :only [split lower-case]]
+  (:use [clojure.string :only [split lower-case]]
         [clojure.pprint :only [pprint]]
-        [clojure.java.io])
+        [clojure.java.io]
+        [slingshot.slingshot :only [throw+]])
   (import [java.io BufferedReader]))
 
 
@@ -12,8 +12,8 @@
 ;(use 'clojure.java.io)
 ;(import '[java.io BufferedReader])
 
-(def *debug* false)
-(def *crlf* (str \return \newline))
+(def ^{:dynamic true} *debug* false)
+(def crlf (str \return \newline))
 
 
 (defn beanstalk-debug [msg]
@@ -43,7 +43,7 @@
 (defn stream-write [w msg]
   (beanstalk-debug (str "* => " msg))
   (doto w (.write msg) 
-    (.write *crlf*)
+    (.write crlf)
     (.flush)))
 
 
@@ -66,16 +66,14 @@
        (condp = (:response reply)
          expected (handler beanstalk reply)
          ; under what conditions do we retry?
-         :expected_crlf (raise 
-                          :type :expected_crlf
-                          :message (str "Protocol error. No CRLF."))
-         :not_found (raise 
-                      :type :not_found
-                      :message (str "Job not found."))
+         :expected_crlf (throw+ {:type    :expected_crlf
+                                 :message (str "Protocol error. No CRLF.")})
+         :not_found (throw+ {:type    :not_found
+                             :message (str "Job not found.")})
          :not_ignored false
-         (raise 
-           :type :protocol
-           :message (str "Unexpected response from sever: " (:response reply)))))
+         (throw+ {:type    :protocol
+                  :message (str "Unexpected response from sever: " 
+                                (:response reply))})))
 
 
 (defn protocol-case 
