@@ -1,5 +1,5 @@
-(defproject com.github.drsnyder/beanstalk "1.0.0-SNAPSHOT"
-  :description "FIXME: write"
+(defproject com.github.drsnyder/beanstalk "1.0.0-clj14"
+  :description "A clojure beanstalkd client."
   :dependencies [[org.clojure/clojure "1.4.0"]
                  [org.clojure/tools.cli "0.2.2"] 
                  [slingshot "0.10.3"]]
