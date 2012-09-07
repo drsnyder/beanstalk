@@ -1,7 +1,7 @@
 (ns com.github.drsnyder.beanstalk.examples.consumer
   (:gen-class)
   (:refer-clojure :exclude [read peek use])
-  (:use clojure.contrib.command-line)
+  (:use clojure.tools.cli)
   (:use com.github.drsnyder.beanstalk))
 
 ; .clojure
@@ -13,23 +13,27 @@
 ; lein run -m com.github.drsnyder.beanstalk.examples.consumer
 
 (defn -main [& args]
-  (with-command-line args
-                     "Beanstalk simple consumer process"
-                     [[host "The host to connect to" "localhost"]
-                      [port "This is the description for bar" 11300]
-                      [tube "The tube to \"use\"." "beanstalk-clj-test"]
-                      remaining]
-
-                     (println (str "Using host " host " port " port " and tube " tube))
-
-                     (with-open [b (new-beanstalk host port)]
-                       (let [ret (.watch b tube)]
-                         (if ret
-                           (loop [job (.reserve b)]
-                             (if (not (= (:payload job) "exit"))
-                               (do
-                                 (println "=> " (:payload job))
-                                 (.delete b (:id job))
-                                 (recur (.reserve b)))
-                               (println "Exiting.")))
-                           (println (str "Error, watch failed: " ret)))))))
+  (let [[opts args _] (cli args
+                           #_"Beanstalk simple consumer process"
+                           ["--host" "The host to connect to" 
+                                     :default "localhost"]
+                           ["--port" "This is the port to connect to"
+                                     :default  11300 
+                                     :parse-fn #(Integer. %)]
+                           ["--tube" "The tube to \"use\"." 
+                                     :default "beanstalk-clj-test"])
+        host          (:host opts)
+        port          (:port opts)
+        tube          (:tube opts)]
+    (println (str "Using host " host " port " port " and tube " tube))
+    (with-open [b (new-beanstalk host port)]
+      (let [ret (.watch b tube)]
+        (if ret
+          (loop [job (.reserve b)]
+            (if (not (= (:payload job) "exit"))
+              (do
+                (println "=> " (:payload job))
+                (.delete b (:id job))
+                (recur (.reserve b)))
+              (println "Exiting.")))
+          (println (str "Error, watch failed: " ret)))))))
